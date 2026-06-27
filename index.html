@@ -671,6 +671,11 @@ function addSet(ex){
   session[activeDay].exercises[ex].push({weight:w,reps:r});
   if(inputState[ex])inputState[ex].reps='';
   if(!sessStart)startDur();
+  // Auto-start rest timer
+  swReset();
+  swRunning=true;swStart=Date.now();swElapsed=0;
+  swInterval=setInterval(swTick,100);
+  swRender();
   save();render();
 }
 function delSet(ex,idx){session[activeDay]?.exercises[ex]?.splice(idx,1);save();render();}
