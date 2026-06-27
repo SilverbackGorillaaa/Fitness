@@ -111,9 +111,8 @@ button{cursor:pointer;-webkit-touch-callout:none;}
 
 /* Exercise list */
 .ex-list{padding:8px 16px 0;}
-.ex-card{background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:12px;margin-bottom:6px;position:relative;overflow:hidden;}
+.ex-card{background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:12px;margin-bottom:6px;}
 .ex-card.has-sets{border-color:var(--b2);}
-.ex-swipe-del{position:absolute;right:0;top:0;bottom:0;width:70px;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;letter-spacing:.5px;transform:translateX(100%);transition:transform .2s;border-radius:0 12px 12px 0;}
 .ex-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
 .ex-left{display:flex;gap:7px;flex:1;min-width:0;}
 .drag-handle{color:var(--t4);font-size:13px;padding:1px 0;cursor:grab;flex-shrink:0;line-height:1.6;user-select:none;}
@@ -140,9 +139,7 @@ button{cursor:pointer;-webkit-touch-callout:none;}
 
 /* Sets */
 .sets-list{margin-bottom:7px;}
-.set-row-wrap{position:relative;overflow:hidden;border-radius:6px;margin-bottom:3px;}
-.set-row{display:flex;align-items:center;gap:5px;background:var(--s2);border-radius:6px;padding:5px 8px;position:relative;z-index:1;transition:transform .15s;}
-.set-swipe-del{position:absolute;right:0;top:0;bottom:0;width:60px;background:var(--red);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;z-index:0;border-radius:6px;}
+.set-row{display:flex;align-items:center;gap:5px;background:var(--s2);border-radius:6px;padding:5px 8px;margin-bottom:3px;}
 .set-num{font-size:9px;font-weight:800;color:var(--t4);width:22px;flex-shrink:0;}
 .set-chip{flex:1;font-size:12px;font-weight:700;color:var(--g);}
 .set-chip.pr{color:#000;background:var(--g);border-radius:4px;padding:1px 6px;}
@@ -151,6 +148,7 @@ button{cursor:pointer;-webkit-touch-callout:none;}
 .set-chip.wu{color:var(--t3);font-style:italic;}
 .wu-btn{background:none;border:1px solid var(--b2);border-radius:4px;color:var(--t4);font-size:8px;padding:2px 5px;font-weight:700;flex-shrink:0;}
 .wu-btn.on{border-color:var(--yellow);color:var(--yellow);}
+.set-del{background:none;border:none;color:var(--t3);font-size:14px;padding:0 3px;flex-shrink:0;line-height:1;}
 .e1rm-row{font-size:9px;color:var(--t4);margin-bottom:6px;}
 .e1rm-row span{color:var(--t2);font-weight:700;}
 
@@ -681,48 +679,6 @@ function renderStats(){
 }
 
 // Swipe to delete set
-function setupSetSwipe(wrap,row,delFn){
-  let startX=0,startY=0,swiped=false,active=false;
-  row.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiped=false;active=false;},{passive:true});
-  row.addEventListener('touchmove',e=>{
-    const dx=e.touches[0].clientX-startX;
-    const dy=e.touches[0].clientY-startY;
-    if(!active&&Math.abs(dy)>Math.abs(dx))return;
-    if(!active&&Math.abs(dx)>8)active=true;
-    if(!active)return;
-    e.preventDefault();
-    if(dx<-20){row.style.transform=`translateX(${Math.max(dx,-60)}px)`;swiped=dx<-40;}
-  },{passive:false});
-  row.addEventListener('touchend',()=>{
-    if(swiped){row.style.transform='translateX(-60px)';setTimeout(()=>delFn(),150);}
-    else row.style.transform='';
-    active=false;
-  });
-}
-
-function setupExSwipe(card,delBg,delFn){
-  let startX=0,startY=0,swiped=false,active=false;
-  card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiped=false;active=false;},{passive:true});
-  card.addEventListener('touchmove',e=>{
-    const dx=e.touches[0].clientX-startX;
-    const dy=Math.abs(e.touches[0].clientY-startY);
-    if(!active&&dy>Math.abs(dx))return;
-    if(!active&&Math.abs(dx)>8)active=true;
-    if(!active)return;
-    e.preventDefault();
-    if(dx<-10){
-      const pct=Math.min(Math.abs(dx)/70,1);
-      delBg.style.transform=`translateX(${(1-pct)*100}%)`;
-      swiped=Math.abs(dx)>60;
-    }
-  },{passive:false});
-  card.addEventListener('touchend',()=>{
-    if(swiped){delBg.style.transform='translateX(0)';setTimeout(()=>delFn(),200);}
-    else delBg.style.transform='translateX(100%)';
-    active=false;
-  });
-}
-
 function setupDrag(card,ex){
   card.draggable=true;
   card.addEventListener('dragstart',e=>{dragSrc=ex;card.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
@@ -758,11 +714,6 @@ function renderExList(){
 
     const card=document.createElement('div');card.className='ex-card'+(sets.length?' has-sets':'');
     setupDrag(card,ex);
-
-    // Swipe-to-remove background
-    const swipeDel=document.createElement('div');swipeDel.className='ex-swipe-del';swipeDel.textContent='REMOVE';
-    card.appendChild(swipeDel);
-    setupExSwipe(card,swipeDel,()=>removeEx(ex));
 
     // Top row
     const top=document.createElement('div');top.className='ex-top';
@@ -821,18 +772,16 @@ function renderExList(){
           if((+s.weight||0)>(+lastSet.weight||0)||(+s.reps||0)>(+lastSet.reps||0))chipCls+=' up';
           else if((+s.weight||0)<(+lastSet.weight||0)||(+s.reps||0)<(+lastSet.reps||0))chipCls+=' down';
         }
-        const wrap=document.createElement('div');wrap.className='set-row-wrap';
-        const delBg=document.createElement('div');delBg.className='set-swipe-del';delBg.textContent='DELETE';
         const row=document.createElement('div');row.className='set-row';
-        setupSetSwipe(wrap,row,()=>delSet(ex,i));
         const num=document.createElement('div');num.className='set-num';num.textContent=s.wu?'WU':`S${i+1-sets.slice(0,i).filter(x=>x.wu).length}`;
         const chip=document.createElement('div');chip.className=chipCls;
         chip.textContent=`${s.weight?s.weight+' lbs':''}${s.weight&&s.reps?' · ':''}${s.reps?s.reps+' reps':''}${s.wu?' (warmup)':''}`;
         const wuBtn=document.createElement('button');wuBtn.className='wu-btn'+(s.wu?' on':'');
         wuBtn.textContent='WU';wuBtn.onclick=()=>toggleWU(ex,i);
-        row.appendChild(num);row.appendChild(chip);row.appendChild(wuBtn);
-        wrap.appendChild(delBg);wrap.appendChild(row);
-        sl.appendChild(wrap);
+        const delBtn=document.createElement('button');delBtn.className='set-del';delBtn.textContent='✕';
+        delBtn.onclick=()=>delSet(ex,i);
+        row.appendChild(num);row.appendChild(chip);row.appendChild(wuBtn);row.appendChild(delBtn);
+        sl.appendChild(row);
       });
       card.appendChild(sl);
       if(wSets.length){
@@ -1038,7 +987,7 @@ function renderHistory(){
   c.innerHTML=`<div class="hist-header"><div class="hist-count">${history.length} Sessions</div>${history.length?`<button class="clear-btn" onclick="clearAll()">Clear All</button>`:''}</div>`;
   if(!history.length){c.innerHTML+='<div class="empty">No sessions yet.</div>';return;}
 
-  // Build weekly summary
+  // Build weekly groups
   const weeks={};
   history.forEach(h=>{
     const wk=getWeekKey(h.date);if(!wk)return;
@@ -1051,12 +1000,10 @@ function renderHistory(){
     const d=new Date(h.date);if(!isNaN(d))weeks[wk].days.add(d.getDay());
   });
 
-  // Sort weeks newest first
   const sortedWeeks=Object.entries(weeks).sort((a,b)=>b[0].localeCompare(a[0]));
 
-  // Render weeks then sessions
   sortedWeeks.forEach(([wkKey,wk])=>{
-    // Week summary card
+    // Week header
     const wcard=document.createElement('div');wcard.className='week-card';
     const wDate=new Date(wkKey);
     const wEnd=new Date(wkKey);wEnd.setDate(wEnd.getDate()+6);
@@ -1076,20 +1023,43 @@ function renderHistory(){
       </div>`;
     c.appendChild(wcard);
 
-    // Sessions in this week
+    // Session cards — collapsed by default
     wk.sessions.forEach(sess=>{
       const idx=history.indexOf(sess);
-      const card=document.createElement('div');card.className='hist-card';
       const ton=sess.tonnage||calcTon(sess.exercises);
       const sets=sess.totalSets||Object.values(sess.exercises||{}).reduce((a,x)=>a+x.filter(s=>!s.wu).length,0);
-      card.innerHTML=`
-        <div class="hist-top"><div><div class="hist-day">${sess.day}</div></div><div class="hist-right"><div class="hist-date">${sess.date}</div><button class="hist-del" onclick="delSession(${idx})">✕</button></div></div>
-        <div class="hist-meta"><div class="hist-meta-item"><b>${sets}</b> sets</div><div class="hist-meta-item"><b>${ton.toLocaleString()}</b> lbs</div></div>
-        ${sess.notes?`<div class="hist-notes">${sess.notes}</div>`:''}
+      const match=sess.day.match(/Day\s*(\d+)/i);
+      const dayShort=match?`D${match[1]}`:sess.day.split('—')[0].trim();
+      const dayFull=sess.day.split('—')[1]?.trim()||'';
+
+      const card=document.createElement('div');card.className='hist-card';card.style.cursor='pointer';
+
+      // Collapsed view
+      const collapsed=document.createElement('div');collapsed.className='hist-collapsed';
+      collapsed.innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:16px;font-weight:900;color:var(--g);min-width:28px;">${dayShort}</div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--t1);">${dayFull}</div>
+              <div style="font-size:9px;color:var(--t3);margin-top:1px;">${sess.date} · ${sets} sets · ${ton>=1000?(ton/1000).toFixed(1)+'k':ton} lbs</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="font-size:10px;color:var(--t4);">▼</div>
+            <button onclick="event.stopPropagation();delSession(${idx})" style="background:none;border:none;color:var(--t3);font-size:14px;padding:2px 4px;">✕</button>
+          </div>
+        </div>
+        ${sess.notes?`<div class="hist-notes" style="margin-top:6px;">${sess.notes}</div>`:''}
       `;
+
+      // Expanded view (hidden by default)
+      const expanded=document.createElement('div');expanded.className='hist-expanded';expanded.style.display='none';
+      expanded.style.marginTop='10px';expanded.style.borderTop=`1px solid var(--b1)`;expanded.style.paddingTop='10px';
+
       const samePrev=history.slice(idx+1).find(h=>h.day===sess.day);
-      Object.entries(sess.exercises||{}).forEach(([ex,sets])=>{
-        if(!sets.length)return;
+      Object.entries(sess.exercises||{}).forEach(([ex,exSets])=>{
+        if(!exSets.length)return;
         const ed=document.createElement('div');ed.className='hist-ex';
         const hdr=document.createElement('div');hdr.className='hist-ex-header';
         const nm=document.createElement('div');nm.className='hist-ex-name';nm.textContent=ex;
@@ -1097,7 +1067,7 @@ function renderHistory(){
         if(samePrev){
           const ps=samePrev.exercises?.[ex];
           if(ps?.length){
-            const cw=Math.max(0,...sets.filter(s=>!s.wu).map(s=>+s.weight||0));
+            const cw=Math.max(0,...exSets.filter(s=>!s.wu).map(s=>+s.weight||0));
             const pw=Math.max(0,...ps.filter(s=>!s.wu).map(s=>+s.weight||0));
             const d=cw-pw;
             const ch=document.createElement('div');ch.className='hist-ex-change '+(d>0?'up':d<0?'down':'same');
@@ -1108,7 +1078,7 @@ function renderHistory(){
         ed.appendChild(hdr);
         const grid=document.createElement('div');grid.className='hist-sets-grid';
         const ps=samePrev?.exercises?.[ex]||[];
-        sets.forEach((s,i)=>{
+        exSets.forEach((s,i)=>{
           const prev=ps[i];
           let cls='hist-set'+(s.wu?' wu-set':'');
           if(!s.wu&&prev&&!prev.wu){
@@ -1119,8 +1089,20 @@ function renderHistory(){
           se.innerHTML=`<div class="hist-set-num">${s.wu?'WU':`S${i+1}`}</div><div class="hist-set-val">${s.weight||'—'}</div><div class="hist-set-reps">${s.reps||'—'} reps</div>`;
           grid.appendChild(se);
         });
-        ed.appendChild(grid);card.appendChild(ed);
+        ed.appendChild(grid);expanded.appendChild(ed);
       });
+
+      // Toggle expand on tap
+      let isExpanded=false;
+      card.onclick=()=>{
+        isExpanded=!isExpanded;
+        expanded.style.display=isExpanded?'block':'none';
+        const arrow=collapsed.querySelector('div[style*="▼"]');
+        if(arrow)arrow.textContent=isExpanded?'▲':'▼';
+      };
+
+      card.appendChild(collapsed);
+      card.appendChild(expanded);
       c.appendChild(card);
     });
   });
