@@ -258,19 +258,34 @@ button{cursor:pointer;}
   <div class="finish-wrap" id="finish-wrap"></div>
 </div>
 
-<!-- Rest Popup -->
-<div class="rest-overlay" id="rest-overlay" style="display:none;">
+<!-- Rest Popup (time selection only) -->
+<div class="rest-overlay" id="rest-overlay" style="display:none;" onclick="if(event.target===this)closeRest()">
   <div class="rest-popup">
-    <div class="rest-popup-title">Rest Timer</div>
+    <div class="rest-popup-title">Select Rest Time</div>
     <div class="rest-set-info" id="rest-set-info"></div>
-    <div class="rest-countdown" id="rest-countdown" style="color:var(--t1);">0<span>:00</span></div>
-    <div class="rest-bar-wrap"><div class="rest-bar" id="rest-bar" style="width:100%"></div></div>
     <div class="rest-presets">
-      <button class="rest-preset-btn" id="rp90" onclick="setRestPreset(90,this)">90s<span class="rest-preset-lbl">Isolation</span></button>
-      <button class="rest-preset-btn" id="rp120" onclick="setRestPreset(120,this)">2 min<span class="rest-preset-lbl">Accessory</span></button>
-      <button class="rest-preset-btn" id="rp180" onclick="setRestPreset(180,this)">3 min<span class="rest-preset-lbl">Compound</span></button>
+      <button class="rest-preset-btn" onclick="setRestPreset(90,this)">90s<span class="rest-preset-lbl">Isolation</span></button>
+      <button class="rest-preset-btn" onclick="setRestPreset(120,this)">2 min<span class="rest-preset-lbl">Accessory</span></button>
+      <button class="rest-preset-btn" onclick="setRestPreset(180,this)">3 min<span class="rest-preset-lbl">Compound</span></button>
     </div>
     <button class="rest-skip" onclick="closeRest()">Skip Rest</button>
+  </div>
+</div>
+
+<!-- Main page rest timer bar (shows after selection) -->
+<div id="main-timer-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;max-width:430px;margin:0 auto;z-index:50;background:var(--s1);border-top:1px solid var(--b2);padding:14px 20px;display:none;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+    <div style="font-size:9px;letter-spacing:3px;color:var(--t4);text-transform:uppercase;">Resting</div>
+    <div id="main-timer-status" style="font-size:9px;font-weight:800;letter-spacing:1px;"></div>
+    <button onclick="cancelMainTimer()" style="background:none;border:none;color:var(--t3);font-size:13px;padding:0 4px;">✕</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div id="main-timer-disp" style="font-size:36px;font-weight:900;letter-spacing:-2px;font-variant-numeric:tabular-nums;min-width:80px;transition:color .3s;">0:00</div>
+    <div style="flex:1;">
+      <div style="height:4px;background:var(--s3);border-radius:2px;overflow:hidden;">
+        <div id="main-timer-bar-fill" style="height:100%;background:var(--acc);border-radius:2px;transition:width .1s linear,background .3s;width:100%;"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -321,7 +336,6 @@ const SEED=[{
 let activeDay=localStorage.getItem('jt_activeDay')||DAY_KEYS[0];
 let session={},history=[],bwLog=[],inputState={},addingAfter=null;
 let sessStart=null,durIv=null,dragSrc=null;
-let restIv=null,restRem=0,restTotal=0,lastSetInfo='';
 
 function ls(k,fb){try{const v=localStorage.getItem(k);return v?JSON.parse(v):fb;}catch{return fb;}}
 function ss(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -389,42 +403,65 @@ function stopDur(){if(durIv){clearInterval(durIv);durIv=null;sessStart=null;docu
 function logBW(){const v=parseFloat(document.getElementById('bw-in').value);if(!v)return;bwLog.unshift({weight:v,date:today()});document.getElementById('bw-in').value='';save();renderBWCur();}
 function renderBWCur(){document.getElementById('bw-cur').textContent=bwLog.length?`${bwLog[0].weight} lbs`:'No data';}
 
-// Rest popup
+// Rest popup — selection only
 function openRest(setInfo){
-  lastSetInfo=setInfo;
   document.getElementById('rest-set-info').innerHTML=setInfo;
   document.getElementById('rest-overlay').style.display='flex';
   document.querySelectorAll('.rest-preset-btn').forEach(b=>b.classList.remove('active'));
-  restRem=0;restTotal=0;
-  clearInterval(restIv);
-  renderRestCountdown();
 }
 function closeRest(){
-  clearInterval(restIv);
   document.getElementById('rest-overlay').style.display='none';
 }
 function setRestPreset(secs,btn){
-  clearInterval(restIv);
-  document.querySelectorAll('.rest-preset-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  restTotal=secs*1000;restRem=secs*1000;
-  renderRestCountdown();
-  restIv=setInterval(()=>{
-    restRem-=100;
-    if(restRem<=0){restRem=0;clearInterval(restIv);setTimeout(closeRest,800);}
-    renderRestCountdown();
+  closeRest();
+  startMainTimer(secs);
+}
+
+// Main page countdown timer
+let mainTimerIv=null,mainTimerRem=0,mainTimerTotal=0,flashIv=null,flashing=false;
+function startMainTimer(secs){
+  clearInterval(mainTimerIv);clearInterval(flashIv);flashing=false;
+  mainTimerTotal=secs*1000;mainTimerRem=secs*1000;
+  document.getElementById('main-timer-bar').style.display='block';
+  renderMainTimer();
+  mainTimerIv=setInterval(()=>{
+    mainTimerRem-=100;
+    if(mainTimerRem<=0){
+      mainTimerRem=0;clearInterval(mainTimerIv);
+      startFlash();
+    }
+    renderMainTimer();
   },100);
 }
-function renderRestCountdown(){
-  const ts=Math.floor(restRem/1000),m=Math.floor(ts/60),s=ts%60,t=Math.floor((restRem%1000)/100);
-  const pct=restTotal?restRem/restTotal:1;
-  const color=pct>0.5?'var(--t1)':pct>0.2?'var(--yellow)':'var(--green)';
-  const cd=document.getElementById('rest-countdown');
-  cd.style.color=restTotal?color:'var(--t4)';
-  cd.innerHTML=restTotal?`${m}<span>:${String(s).padStart(2,'0')}.${t}</span>`:`0<span>:00</span>`;
-  const bar=document.getElementById('rest-bar');
-  bar.style.width=(pct*100)+'%';
-  bar.style.background=color;
+function renderMainTimer(){
+  const ts=Math.floor(mainTimerRem/1000),m=Math.floor(ts/60),s=ts%60;
+  const pct=mainTimerTotal?mainTimerRem/mainTimerTotal:1;
+  const color=pct>0.4?'var(--t1)':pct>0.15?'var(--yellow)':'var(--red)';
+  document.getElementById('main-timer-disp').textContent=`${m}:${String(s).padStart(2,'0')}`;
+  document.getElementById('main-timer-disp').style.color=flashing?'var(--green)':color;
+  document.getElementById('main-timer-bar-fill').style.width=(pct*100)+'%';
+  document.getElementById('main-timer-bar-fill').style.background=flashing?'var(--green)':color;
+  const st=document.getElementById('main-timer-status');
+  if(mainTimerRem<=0&&!flashing){st.textContent='GO!';st.style.color='var(--green)';}
+  else if(pct<0.15){st.textContent='ALMOST';st.style.color='var(--red)';}
+  else if(pct<0.4){st.textContent='SOON';st.style.color='var(--yellow)';}
+  else{st.textContent='RESTING';st.style.color='var(--t4)';}
+}
+function startFlash(){
+  let on=true;
+  flashIv=setInterval(()=>{
+    flashing=on;on=!on;
+    document.getElementById('main-timer-disp').style.color=flashing?'var(--green)':'var(--t4)';
+    document.getElementById('main-timer-disp').textContent='GO!';
+    document.getElementById('main-timer-status').textContent='REST DONE';
+    document.getElementById('main-timer-status').style.color='var(--green)';
+  },400);
+  setTimeout(()=>{clearInterval(flashIv);cancelMainTimer();},4000);
+}
+function cancelMainTimer(){
+  clearInterval(mainTimerIv);clearInterval(flashIv);
+  flashing=false;mainTimerRem=0;mainTimerTotal=0;
+  document.getElementById('main-timer-bar').style.display='none';
 }
 
 // Views
