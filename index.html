@@ -308,7 +308,6 @@ button{cursor:pointer;-webkit-touch-callout:none;}
       <button class="htab" id="tab-history" onclick="sw('history')">Hist <span id="hcount">0</span></button>
       <button class="htab" id="tab-prs" onclick="sw('prs')">PRs</button>
       <button class="htab" id="tab-cal" onclick="sw('cal')">Cal</button>
-      <button class="htab" id="tab-body" onclick="sw('body')">Body</button>
       <button class="htab" id="tab-settings" onclick="sw('settings')">⚙</button>
     </div>
   </div>
@@ -395,16 +394,6 @@ button{cursor:pointer;-webkit-touch-callout:none;}
 </div>
 
 <!-- BODY -->
-<div id="view-body" style="display:none">
-  <div class="body-wrap">
-    <div class="graph-card">
-      <div class="graph-lbl">Bodyweight Trend</div>
-      <div class="graph-bars" id="bw-graph"></div>
-    </div>
-    <div class="bw-list" id="bw-list"></div>
-  </div>
-</div>
-
 <!-- SETTINGS -->
 <div id="view-settings" style="display:none">
   <div class="settings-wrap">
@@ -622,7 +611,7 @@ function calcPlates(){
 
 // Views
 function sw(v){
-  ['log','history','prs','cal','body','settings'].forEach(x=>{
+  ['log','history','prs','cal','settings'].forEach(x=>{
     const el=document.getElementById('view-'+x);
     if(el)el.style.display=v===x?'':'none';
     const tb=document.getElementById('tab-'+x);
@@ -631,7 +620,6 @@ function sw(v){
   if(v==='history')renderHistory();
   if(v==='prs')renderPRs();
   if(v==='cal')renderCal();
-  if(v==='body')renderBody();
   if(v==='settings')renderSettings();
 }
 
@@ -694,37 +682,44 @@ function renderStats(){
 
 // Swipe to delete set
 function setupSetSwipe(wrap,row,delFn){
-  let startX=0,startY=0,swiped=false;
-  row.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiped=false;},{passive:true});
+  let startX=0,startY=0,swiped=false,active=false;
+  row.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiped=false;active=false;},{passive:true});
   row.addEventListener('touchmove',e=>{
     const dx=e.touches[0].clientX-startX;
     const dy=e.touches[0].clientY-startY;
-    if(Math.abs(dy)>Math.abs(dx))return;
+    if(!active&&Math.abs(dy)>Math.abs(dx))return;
+    if(!active&&Math.abs(dx)>8)active=true;
+    if(!active)return;
+    e.preventDefault();
     if(dx<-20){row.style.transform=`translateX(${Math.max(dx,-60)}px)`;swiped=dx<-40;}
-  },{passive:true});
+  },{passive:false});
   row.addEventListener('touchend',()=>{
     if(swiped){row.style.transform='translateX(-60px)';setTimeout(()=>delFn(),150);}
     else row.style.transform='';
+    active=false;
   });
 }
 
-// Swipe to remove exercise
 function setupExSwipe(card,delBg,delFn){
-  let startX=0,startY=0,swiped=false;
-  card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiped=false;},{passive:true});
+  let startX=0,startY=0,swiped=false,active=false;
+  card.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startY=e.touches[0].clientY;swiped=false;active=false;},{passive:true});
   card.addEventListener('touchmove',e=>{
     const dx=e.touches[0].clientX-startX;
     const dy=Math.abs(e.touches[0].clientY-startY);
-    if(dy>20)return;
+    if(!active&&dy>Math.abs(dx))return;
+    if(!active&&Math.abs(dx)>8)active=true;
+    if(!active)return;
+    e.preventDefault();
     if(dx<-10){
       const pct=Math.min(Math.abs(dx)/70,1);
       delBg.style.transform=`translateX(${(1-pct)*100}%)`;
       swiped=Math.abs(dx)>60;
     }
-  },{passive:true});
+  },{passive:false});
   card.addEventListener('touchend',()=>{
     if(swiped){delBg.style.transform='translateX(0)';setTimeout(()=>delFn(),200);}
     else delBg.style.transform='translateX(100%)';
+    active=false;
   });
 }
 
@@ -1135,28 +1130,6 @@ function delSession(idx){appConfirm('Delete session?','This cannot be undone.',(
 function clearAll(){appConfirm('Delete ALL history?','Every session will be permanently removed.',()=>{history=[];save();renderHistory();document.getElementById('hcount').textContent=0;});}
 
 // Body
-function renderBody(){
-  const g=document.getElementById('bw-graph'),l=document.getElementById('bw-list');
-  g.innerHTML='';l.innerHTML='';
-  if(!bwLog.length){g.innerHTML='<div style="color:var(--t4);font-size:10px;align-self:center;">Log your weight to see the trend</div>';return;}
-  const recent=[...bwLog].slice(0,14).reverse();
-  const mn=Math.min(...recent.map(b=>b.weight))-2,mx=Math.max(...recent.map(b=>b.weight))+2,rng=mx-mn||1;
-  recent.forEach((b,i)=>{
-    const h=Math.round(((b.weight-mn)/rng)*60)+10;
-    const wrap=document.createElement('div');wrap.className='graph-bw';
-    const bar=document.createElement('div');bar.className='graph-b'+(i===recent.length-1?' latest':'');bar.style.height=h+'px';
-    const lbl=document.createElement('div');lbl.className='graph-bl';lbl.textContent=b.weight;
-    wrap.appendChild(bar);wrap.appendChild(lbl);g.appendChild(wrap);
-  });
-  bwLog.forEach((b,i)=>{
-    const prev=bwLog[i+1],diff=prev?+(b.weight-prev.weight).toFixed(1):null;
-    const item=document.createElement('div');item.className='bw-item';
-    const cc=diff===null?'var(--t3)':diff>0?'var(--g)':diff<0?'var(--red)':'var(--t3)';
-    item.innerHTML=`<div class="bw-w">${b.weight} lbs</div><div class="bw-d">${b.date}</div>${diff!==null?`<div class="bw-c" style="color:${cc}">${diff>0?'+':''}${diff} lbs</div>`:''}`;
-    l.appendChild(item);
-  });
-}
-
 // Settings
 function renderSettings(){
   const el=document.getElementById('storage-info');
