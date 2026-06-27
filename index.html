@@ -622,21 +622,31 @@ function sw(v){
 }
 
 function calcStreak(){
-  // Get unique training days from history sorted newest first
-  const days=new Set();
+  loadCalRest();
+  const trainedDays=new Set();
   history.forEach(h=>{
     const d=new Date(h.date);
-    if(!isNaN(d))days.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    if(!isNaN(d))trainedDays.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
   });
-  const sorted=[...days].sort((a,b)=>b.localeCompare(a));
-  if(!sorted.length)return 0;
+  if(!trainedDays.size)return 0;
   let streak=0;
   const now=new Date();
   let check=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  let consecutiveRest=0;
   for(let i=0;i<365;i++){
     const key=`${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`;
-    if(days.has(key)){streak++;}
-    else if(streak>0)break;
+    const calKey=calDayKey(check.getFullYear(),check.getMonth(),check.getDate());
+    if(trainedDays.has(key)){
+      streak++;
+      consecutiveRest=0;
+    } else if(calRestDays[calKey]==='rest'){
+      consecutiveRest++;
+      if(consecutiveRest>=2)break;
+    } else {
+      // Unlogged day — treat same as rest
+      consecutiveRest++;
+      if(consecutiveRest>=2)break;
+    }
     check.setDate(check.getDate()-1);
   }
   return streak;
