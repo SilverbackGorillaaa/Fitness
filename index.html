@@ -30,6 +30,25 @@ button{cursor:pointer;-webkit-touch-callout:none;}
 .hdr-l{display:flex;align-items:baseline;gap:8px;}
 .hdr-name{font-size:24px;font-weight:900;letter-spacing:-1px;color:var(--g);}
 .hdr-sub{font-size:10px;color:var(--t4);letter-spacing:2px;text-transform:uppercase;}
+.streak-badge{display:flex;align-items:center;gap:4px;background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2);border-radius:8px;padding:4px 9px;}
+.streak-num{font-size:14px;font-weight:900;color:var(--g);line-height:1;}
+.streak-lbl{font-size:8px;color:var(--gd);letter-spacing:1px;text-transform:uppercase;}
+.target-sets-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.target-dots{display:flex;gap:3px;}
+.target-dot{width:7px;height:7px;border-radius:50%;background:var(--s3);}
+.target-dot.done{background:var(--g);}
+.target-dot.wu{background:var(--yellow);opacity:.6;}
+.target-sets-lbl{font-size:9px;color:var(--t4);}
+.week-card{background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:10px 12px;margin-bottom:8px;}
+.week-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.week-label{font-size:9px;font-weight:800;color:var(--t2);letter-spacing:.5px;}
+.week-meta{display:flex;gap:10px;}
+.week-meta-item{font-size:9px;color:var(--t4);}
+.week-meta-item b{color:var(--t2);font-weight:700;}
+.week-days{display:flex;gap:3px;}
+.week-day{width:20px;height:20px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;background:var(--s3);color:var(--t4);}
+.week-day.trained{background:rgba(0,255,136,.15);color:var(--g);border:1px solid rgba(0,255,136,.2);}
+.week-day.rest{background:var(--s3);color:var(--t3);}
 .hdr-tabs{display:flex;gap:3px;}
 .htab{padding:6px 11px;border-radius:7px;border:1px solid var(--b1);background:transparent;color:var(--t3);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
 .htab.on{background:var(--g);color:#000;border-color:var(--g);}
@@ -279,12 +298,19 @@ button{cursor:pointer;-webkit-touch-callout:none;}
     <div class="hdr-name">JEFF</div>
     <div class="hdr-sub">Training</div>
   </div>
-  <div class="hdr-tabs">
-    <button class="htab on" id="tab-log" onclick="sw('log')">Log</button>
-    <button class="htab" id="tab-history" onclick="sw('history')">Hist <span id="hcount">0</span></button>
-    <button class="htab" id="tab-prs" onclick="sw('prs')">PRs</button>
-    <button class="htab" id="tab-body" onclick="sw('body')">Body</button>
-    <button class="htab" id="tab-settings" onclick="sw('settings')">⚙</button>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div class="streak-badge" id="streak-badge" style="display:none;">
+      <div class="streak-num" id="streak-num">0</div>
+      <div class="streak-lbl">🔥 Day Streak</div>
+    </div>
+    <div class="hdr-tabs">
+      <button class="htab on" id="tab-log" onclick="sw('log')">Log</button>
+      <button class="htab" id="tab-history" onclick="sw('history')">Hist <span id="hcount">0</span></button>
+      <button class="htab" id="tab-prs" onclick="sw('prs')">PRs</button>
+      <button class="htab" id="tab-cal" onclick="sw('cal')">Cal</button>
+      <button class="htab" id="tab-body" onclick="sw('body')">Body</button>
+      <button class="htab" id="tab-settings" onclick="sw('settings')">⚙</button>
+    </div>
   </div>
 </div>
 
@@ -335,6 +361,36 @@ button{cursor:pointer;-webkit-touch-callout:none;}
   <div class="pr-wrap">
     <input class="pr-search" type="text" id="pr-search" placeholder="Search exercises..." oninput="renderPRs()">
     <div id="pr-list"></div>
+  </div>
+</div>
+
+<div id="view-cal" style="display:none">
+  <div style="padding:10px 16px 0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <button onclick="calPrev()" style="background:none;border:1px solid var(--b1);border-radius:8px;color:var(--t2);font-size:18px;padding:4px 12px;font-weight:700;">‹</button>
+      <div id="cal-month-title" style="font-size:16px;font-weight:800;letter-spacing:-.5px;"></div>
+      <button onclick="calNext()" style="background:none;border:1px solid var(--b1);border-radius:8px;color:var(--t2);font-size:18px;padding:4px 12px;font-weight:700;">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px;" id="cal-dow-row"></div>
+    <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;"></div>
+    <div style="display:flex;gap:12px;margin-top:12px;padding:10px 0;border-top:1px solid var(--b1);">
+      <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t3);"><div style="width:8px;height:8px;border-radius:2px;background:rgba(0,255,136,.3);border:1px solid var(--g);"></div>Trained</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t3);"><div style="width:8px;height:8px;border-radius:2px;background:rgba(255,68,85,.15);border:1px solid var(--red);"></div>Rest</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:9px;color:var(--t3);"><div style="width:8px;height:8px;border-radius:2px;background:var(--s2);border:1px solid var(--b2);"></div>Today</div>
+    </div>
+  </div>
+</div>
+
+<!-- Cal day popup -->
+<div id="cal-popup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;align-items:flex-end;justify-content:center;backdrop-filter:blur(8px);" onclick="if(event.target===this)closeCalPopup()">
+  <div style="background:var(--s1);border:1px solid var(--b2);border-radius:20px 20px 0 0;padding:24px 20px 44px;width:100%;max-width:430px;">
+    <div id="cal-popup-date" style="font-size:16px;font-weight:800;text-align:center;margin-bottom:4px;"></div>
+    <div id="cal-popup-status" style="font-size:10px;color:var(--t3);text-align:center;margin-bottom:20px;"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="markCalRest()" style="padding:14px;border-radius:12px;border:1px solid rgba(255,68,85,.3);background:rgba(255,68,85,.08);color:var(--red);font-size:14px;font-weight:800;">😴 Mark as Rest Day</button>
+      <button onclick="clearCalDay()" id="cal-clear-btn" style="padding:12px;border-radius:12px;border:1px solid var(--b2);background:transparent;color:var(--t3);font-size:12px;font-weight:700;">✕ Clear Day</button>
+      <button onclick="closeCalPopup()" style="padding:12px;border-radius:12px;border:none;background:transparent;color:var(--t4);font-size:12px;font-weight:700;">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -566,7 +622,7 @@ function calcPlates(){
 
 // Views
 function sw(v){
-  ['log','history','prs','body','settings'].forEach(x=>{
+  ['log','history','prs','cal','body','settings'].forEach(x=>{
     const el=document.getElementById('view-'+x);
     if(el)el.style.display=v===x?'':'none';
     const tb=document.getElementById('tab-'+x);
@@ -574,8 +630,38 @@ function sw(v){
   });
   if(v==='history')renderHistory();
   if(v==='prs')renderPRs();
+  if(v==='cal')renderCal();
   if(v==='body')renderBody();
   if(v==='settings')renderSettings();
+}
+
+function calcStreak(){
+  // Get unique training days from history sorted newest first
+  const days=new Set();
+  history.forEach(h=>{
+    const d=new Date(h.date);
+    if(!isNaN(d))days.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+  });
+  const sorted=[...days].sort((a,b)=>b.localeCompare(a));
+  if(!sorted.length)return 0;
+  let streak=0;
+  const now=new Date();
+  let check=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  for(let i=0;i<365;i++){
+    const key=`${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`;
+    if(days.has(key)){streak++;}
+    else if(streak>0)break;
+    check.setDate(check.getDate()-1);
+  }
+  return streak;
+}
+
+function renderStreak(){
+  const s=calcStreak();
+  const badge=document.getElementById('streak-badge');
+  const num=document.getElementById('streak-num');
+  if(s>0){badge.style.display='flex';num.textContent=s;}
+  else badge.style.display='none';
 }
 
 function renderDayTabs(){
@@ -761,6 +847,25 @@ function renderExList(){
       }
     }
 
+    // Target sets indicator
+    const targetSets=4; // default target
+    const totalLogged=sets.length;
+    if(totalLogged>0||true){
+      const trow=document.createElement('div');trow.className='target-sets-row';
+      const dots=document.createElement('div');dots.className='target-dots';
+      const displayTarget=Math.max(targetSets,totalLogged);
+      for(let i=0;i<displayTarget;i++){
+        const dot=document.createElement('div');
+        if(i<sets.length){dot.className='target-dot '+(sets[i].wu?'wu':'done');}
+        else dot.className='target-dot';
+        dots.appendChild(dot);
+      }
+      const lbl=document.createElement('div');lbl.className='target-sets-lbl';
+      lbl.textContent=`${sets.filter(s=>!s.wu).length} working sets`;
+      trow.appendChild(dots);trow.appendChild(lbl);
+      card.appendChild(trow);
+    }
+
     // Input row
     const ir=document.createElement('div');ir.className='input-row';
     const wi=document.createElement('input');wi.type='number';wi.className='ex-input';wi.placeholder='lbs';
@@ -865,7 +970,7 @@ function finishSession(){
   pendingSessionData={date:day.date||today(),day:activeDay,exercises:day.exercises,notes:day.notes||'',totalSets:sets,tonnage:ton};
   history.unshift(pendingSessionData);
   delete session[activeDay];
-  save();render();
+  save();render();renderStreak();
   document.getElementById('hcount').textContent=history.length;
   setTimeout(()=>showSummary(sets,ton,exs,durStr,day.exercises),300);
 }
@@ -926,54 +1031,103 @@ function renderPRs(){
 }
 
 // History
+function getWeekKey(date){
+  const d=new Date(date);if(isNaN(d))return null;
+  const day=d.getDay();
+  const mon=new Date(d);mon.setDate(d.getDate()-(day===0?6:day-1));
+  return `${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
+}
+
 function renderHistory(){
   const c=document.getElementById('hist-list');
   c.innerHTML=`<div class="hist-header"><div class="hist-count">${history.length} Sessions</div>${history.length?`<button class="clear-btn" onclick="clearAll()">Clear All</button>`:''}</div>`;
   if(!history.length){c.innerHTML+='<div class="empty">No sessions yet.</div>';return;}
-  history.forEach((sess,idx)=>{
-    const card=document.createElement('div');card.className='hist-card';
-    const ton=sess.tonnage||calcTon(sess.exercises);
-    const sets=sess.totalSets||Object.values(sess.exercises||{}).reduce((a,x)=>a+x.filter(s=>!s.wu).length,0);
-    card.innerHTML=`
-      <div class="hist-top"><div><div class="hist-day">${sess.day}</div></div><div class="hist-right"><div class="hist-date">${sess.date}</div><button class="hist-del" onclick="delSession(${idx})">✕</button></div></div>
-      <div class="hist-meta"><div class="hist-meta-item"><b>${sets}</b> sets</div><div class="hist-meta-item"><b>${ton.toLocaleString()}</b> lbs</div></div>
-      ${sess.notes?`<div class="hist-notes">${sess.notes}</div>`:''}
-    `;
-    const samePrev=history.slice(idx+1).find(h=>h.day===sess.day);
-    Object.entries(sess.exercises||{}).forEach(([ex,sets])=>{
-      if(!sets.length)return;
-      const ed=document.createElement('div');ed.className='hist-ex';
-      const hdr=document.createElement('div');hdr.className='hist-ex-header';
-      const nm=document.createElement('div');nm.className='hist-ex-name';nm.textContent=ex;
-      hdr.appendChild(nm);
-      if(samePrev){
-        const ps=samePrev.exercises?.[ex];
-        if(ps?.length){
-          const cw=Math.max(...sets.filter(s=>!s.wu).map(s=>+s.weight||0));
-          const pw=Math.max(...ps.filter(s=>!s.wu).map(s=>+s.weight||0));
-          const d=cw-pw;
-          const ch=document.createElement('div');ch.className='hist-ex-change '+(d>0?'up':d<0?'down':'same');
-          ch.textContent=d>0?`↑ +${d} lbs`:d<0?`↓ ${d} lbs`:'→ Same';
-          hdr.appendChild(ch);
+
+  // Build weekly summary
+  const weeks={};
+  history.forEach(h=>{
+    const wk=getWeekKey(h.date);if(!wk)return;
+    if(!weeks[wk])weeks[wk]={sessions:[],sets:0,tonnage:0,days:new Set()};
+    const sets=h.totalSets||Object.values(h.exercises||{}).reduce((a,x)=>a+x.filter(s=>!s.wu).length,0);
+    const ton=h.tonnage||calcTon(h.exercises);
+    weeks[wk].sessions.push(h);
+    weeks[wk].sets+=sets;
+    weeks[wk].tonnage+=ton;
+    const d=new Date(h.date);if(!isNaN(d))weeks[wk].days.add(d.getDay());
+  });
+
+  // Sort weeks newest first
+  const sortedWeeks=Object.entries(weeks).sort((a,b)=>b[0].localeCompare(a[0]));
+
+  // Render weeks then sessions
+  sortedWeeks.forEach(([wkKey,wk])=>{
+    // Week summary card
+    const wcard=document.createElement('div');wcard.className='week-card';
+    const wDate=new Date(wkKey);
+    const wEnd=new Date(wkKey);wEnd.setDate(wEnd.getDate()+6);
+    const wLabel=`${wDate.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${wEnd.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+    const dayLabels=['M','T','W','T','F','S','S'];
+    const dayOrder=[1,2,3,4,5,6,0];
+    const daysHtml=dayOrder.map(d=>`<div class="week-day ${wk.days.has(d)?'trained':''}">${dayLabels[dayOrder.indexOf(d)]}</div>`).join('');
+    wcard.innerHTML=`
+      <div class="week-card-header">
+        <div class="week-label">${wLabel}</div>
+        <div class="week-days">${daysHtml}</div>
+      </div>
+      <div class="week-meta">
+        <div class="week-meta-item"><b>${wk.sessions.length}</b> sessions</div>
+        <div class="week-meta-item"><b>${wk.sets}</b> sets</div>
+        <div class="week-meta-item"><b>${wk.tonnage>=1000?(wk.tonnage/1000).toFixed(1)+'k':wk.tonnage}</b> lbs</div>
+      </div>`;
+    c.appendChild(wcard);
+
+    // Sessions in this week
+    wk.sessions.forEach(sess=>{
+      const idx=history.indexOf(sess);
+      const card=document.createElement('div');card.className='hist-card';
+      const ton=sess.tonnage||calcTon(sess.exercises);
+      const sets=sess.totalSets||Object.values(sess.exercises||{}).reduce((a,x)=>a+x.filter(s=>!s.wu).length,0);
+      card.innerHTML=`
+        <div class="hist-top"><div><div class="hist-day">${sess.day}</div></div><div class="hist-right"><div class="hist-date">${sess.date}</div><button class="hist-del" onclick="delSession(${idx})">✕</button></div></div>
+        <div class="hist-meta"><div class="hist-meta-item"><b>${sets}</b> sets</div><div class="hist-meta-item"><b>${ton.toLocaleString()}</b> lbs</div></div>
+        ${sess.notes?`<div class="hist-notes">${sess.notes}</div>`:''}
+      `;
+      const samePrev=history.slice(idx+1).find(h=>h.day===sess.day);
+      Object.entries(sess.exercises||{}).forEach(([ex,sets])=>{
+        if(!sets.length)return;
+        const ed=document.createElement('div');ed.className='hist-ex';
+        const hdr=document.createElement('div');hdr.className='hist-ex-header';
+        const nm=document.createElement('div');nm.className='hist-ex-name';nm.textContent=ex;
+        hdr.appendChild(nm);
+        if(samePrev){
+          const ps=samePrev.exercises?.[ex];
+          if(ps?.length){
+            const cw=Math.max(0,...sets.filter(s=>!s.wu).map(s=>+s.weight||0));
+            const pw=Math.max(0,...ps.filter(s=>!s.wu).map(s=>+s.weight||0));
+            const d=cw-pw;
+            const ch=document.createElement('div');ch.className='hist-ex-change '+(d>0?'up':d<0?'down':'same');
+            ch.textContent=d>0?`↑ +${d} lbs`:d<0?`↓ ${d} lbs`:'→ Same';
+            hdr.appendChild(ch);
+          }
         }
-      }
-      ed.appendChild(hdr);
-      const grid=document.createElement('div');grid.className='hist-sets-grid';
-      const ps=samePrev?.exercises?.[ex]||[];
-      sets.forEach((s,i)=>{
-        const prev=ps[i];
-        let cls='hist-set'+(s.wu?' wu-set':'');
-        if(!s.wu&&prev&&!prev.wu){
-          if((+s.weight||0)>(+prev.weight||0)||(+s.reps||0)>(+prev.reps||0))cls+=' improved';
-          else if((+s.weight||0)<(+prev.weight||0)||(+s.reps||0)<(+prev.reps||0))cls+=' declined';
-        }
-        const se=document.createElement('div');se.className=cls;
-        se.innerHTML=`<div class="hist-set-num">${s.wu?'WU':`S${i+1}`}</div><div class="hist-set-val">${s.weight||'—'}</div><div class="hist-set-reps">${s.reps||'—'} reps</div>`;
-        grid.appendChild(se);
+        ed.appendChild(hdr);
+        const grid=document.createElement('div');grid.className='hist-sets-grid';
+        const ps=samePrev?.exercises?.[ex]||[];
+        sets.forEach((s,i)=>{
+          const prev=ps[i];
+          let cls='hist-set'+(s.wu?' wu-set':'');
+          if(!s.wu&&prev&&!prev.wu){
+            if((+s.weight||0)>(+prev.weight||0)||(+s.reps||0)>(+prev.reps||0))cls+=' improved';
+            else if((+s.weight||0)<(+prev.weight||0)||(+s.reps||0)<(+prev.reps||0))cls+=' declined';
+          }
+          const se=document.createElement('div');se.className=cls;
+          se.innerHTML=`<div class="hist-set-num">${s.wu?'WU':`S${i+1}`}</div><div class="hist-set-val">${s.weight||'—'}</div><div class="hist-set-reps">${s.reps||'—'} reps</div>`;
+          grid.appendChild(se);
+        });
+        ed.appendChild(grid);card.appendChild(ed);
       });
-      ed.appendChild(grid);card.appendChild(ed);
+      c.appendChild(card);
     });
-    c.appendChild(card);
   });
 }
 
@@ -1066,6 +1220,128 @@ function appConfirm(msg,sub,cb){
 }
 function confirmCancel(){document.getElementById('confirm-overlay').style.display='none';confirmCB=null;}
 
+// ── Calendar ──────────────────────────────────────────────────
+let calYear=new Date().getFullYear(),calMonth=new Date().getMonth();
+let calRestDays={};
+const CAL_REST_KEY='jt_cal_rest_v1';
+let calSelectedDate=null;
+
+function loadCalRest(){try{calRestDays=JSON.parse(localStorage.getItem(CAL_REST_KEY)||'{}');}catch{calRestDays={};}}
+function saveCalRest(){localStorage.setItem(CAL_REST_KEY,JSON.stringify(calRestDays));}
+function calDayKey(y,m,d){return`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+
+function renderCal(){
+  loadCalRest();
+  const now=new Date();
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+
+  // Build DOW header in JS
+  const dowRow=document.getElementById('cal-dow-row');
+  if(dowRow&&!dowRow.children.length){
+    ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>{
+      const el=document.createElement('div');
+      el.style.cssText='text-align:center;font-size:8px;font-weight:800;color:var(--t4);letter-spacing:1px;padding:4px 0;';
+      el.textContent=d;
+      dowRow.appendChild(el);
+    });
+  }
+
+  // Build map of date -> day labels from history
+  const trainedDays={};
+  history.forEach(h=>{
+    const d=new Date(h.date);
+    if(isNaN(d))return;
+    if(d.getFullYear()===calYear&&d.getMonth()===calMonth){
+      const dayNum=d.getDate();
+      const match=h.day.match(/Day\s*(\d+)/i);
+      const label=match?`D${match[1]}`:h.day.split('—')[0].trim().replace('Day','D').replace(/\s/g,'');
+      if(!trainedDays[dayNum])trainedDays[dayNum]=[];
+      trainedDays[dayNum].push(label);
+    }
+  });
+
+  document.getElementById('cal-month-title').textContent=
+    new Date(calYear,calMonth).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+
+  const grid=document.getElementById('cal-grid');
+  grid.innerHTML='';
+
+  for(let i=0;i<firstDay;i++){
+    const empty=document.createElement('div');
+    empty.style.cssText='aspect-ratio:1;';
+    grid.appendChild(empty);
+  }
+
+  for(let d=1;d<=daysInMonth;d++){
+    const isToday=d===now.getDate()&&calMonth===now.getMonth()&&calYear===now.getFullYear();
+    const trained=trainedDays[d];
+    const key=calDayKey(calYear,calMonth,d);
+    const isRest=calRestDays[key]==='rest';
+    const cell=document.createElement('div');
+
+    let bg='var(--s1)',border='var(--b1)',numColor='var(--t3)';
+    if(trained){bg='rgba(0,255,136,.12)';border='rgba(0,255,136,.35)';numColor='var(--g)';}
+    else if(isRest){bg='rgba(255,68,85,.08)';border='rgba(255,68,85,.25)';numColor='var(--red)';}
+    else if(isToday){border='var(--b3)';numColor='var(--t1)';}
+
+    cell.style.cssText=`aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:${bg};border:1px solid ${border};cursor:pointer;`;
+
+    const dayNum=document.createElement('div');
+    dayNum.style.cssText=`font-size:11px;font-weight:${isToday?'900':'600'};color:${numColor};line-height:1;`;
+    dayNum.textContent=d;
+    cell.appendChild(dayNum);
+
+    if(trained){
+      const unique=[...new Set(trained)];
+      const lbl=document.createElement('div');
+      lbl.style.cssText='font-size:7px;font-weight:800;color:var(--gd);letter-spacing:.3px;margin-top:2px;text-align:center;line-height:1.2;';
+      lbl.textContent=unique.join(' ');
+      cell.appendChild(lbl);
+    } else if(isRest){
+      const lbl=document.createElement('div');
+      lbl.style.cssText='font-size:9px;margin-top:1px;';
+      lbl.textContent='😴';
+      cell.appendChild(lbl);
+    }
+
+    // Only allow tapping on non-trained days to mark rest
+    if(!trained){
+      cell.onclick=()=>openCalPopup(calYear,calMonth,d,isRest);
+    }
+
+    grid.appendChild(cell);
+  }
+}
+
+function openCalPopup(y,m,d,isRest){
+  calSelectedDate={y,m,d};
+  const dateStr=new Date(y,m,d).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  document.getElementById('cal-popup-date').textContent=dateStr;
+  document.getElementById('cal-popup-status').textContent=isRest?'Currently marked as rest':'Not logged';
+  document.getElementById('cal-clear-btn').style.display=isRest?'block':'none';
+  document.getElementById('cal-popup').style.display='flex';
+}
+
+function closeCalPopup(){document.getElementById('cal-popup').style.display='none';calSelectedDate=null;}
+
+function markCalRest(){
+  if(!calSelectedDate)return;
+  const key=calDayKey(calSelectedDate.y,calSelectedDate.m,calSelectedDate.d);
+  calRestDays[key]='rest';
+  saveCalRest();closeCalPopup();renderCal();
+}
+
+function clearCalDay(){
+  if(!calSelectedDate)return;
+  const key=calDayKey(calSelectedDate.y,calSelectedDate.m,calSelectedDate.d);
+  delete calRestDays[key];
+  saveCalRest();closeCalPopup();renderCal();
+}
+
+function calPrev(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCal();}
+function calNext(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCal();}
+
 // Quotes
 const QUOTES=[
   {q:"We're all gonna make it brah.",a:"Zyzz"},{q:"You mirin brah?",a:"Zyzz"},{q:"I used to be a fat fuck just like you.",a:"Zyzz"},{q:"Aesthetics over everything.",a:"Zyzz"},{q:"Train insane or remain the same.",a:"Zyzz"},{q:"Don't be a sad cunt. Be a sick cunt.",a:"Zyzz"},{q:"Life is too short to be small.",a:"Zyzz"},{q:"Stop waiting for the right moment. Create it.",a:"Zyzz"},{q:"The body achieves what the mind believes.",a:"Greg Plitt"},{q:"The pain you feel today will be the strength you feel tomorrow.",a:"Greg Plitt"},{q:"Your competition is not other people. Your competition is your procrastination.",a:"Greg Plitt"},{q:"Every rep, every set, every drop of sweat is an investment in yourself.",a:"Greg Plitt"},{q:"Stop thinking and start doing.",a:"Greg Plitt"},{q:"Winners are not born. They are made.",a:"Greg Plitt"},{q:"The clock is ticking. Are you becoming the person you want to be?",a:"Greg Plitt"},{q:"I don't stop when I'm tired. I stop when I'm done.",a:"David Goggins"},{q:"You are in danger of living a life so comfortable and soft that you will die without ever realizing your true potential.",a:"David Goggins"},{q:"Nobody cares what you did yesterday. What have you done today to better yourself?",a:"David Goggins"},{q:"When you think you are done, you're only at 40% of your body's capability.",a:"David Goggins"},{q:"The only way to grow is to suffer.",a:"David Goggins"},{q:"Motivation is crap. When you're driven, whatever is in front of you will get destroyed.",a:"David Goggins"},{q:"You have to build mental calluses. The same way you build physical ones.",a:"David Goggins"},{q:"Embrace the pain. It's only temporary. Quitting lasts forever.",a:"David Goggins"},{q:"I'm not talented. I'm obsessed.",a:"David Goggins"},{q:"Your entitled mind is the biggest obstacle in your life.",a:"David Goggins"},{q:"It's still your muthaf***ing set.",a:"CT Fletcher"},{q:"Obsession is a word used by the lazy to describe the dedicated.",a:"CT Fletcher"},{q:"I command you to grow.",a:"CT Fletcher"},{q:"You want a great body? You have to be willing to suffer for it.",a:"CT Fletcher"},{q:"The weight doesn't know how old you are.",a:"CT Fletcher"},{q:"Don't be afraid of the heavy weight. Attack it.",a:"CT Fletcher"},{q:"Success isn't owned. It's leased. And rent is due every day.",a:"CT Fletcher"},{q:"Champions aren't made in gyms. Champions are made from something deep inside them.",a:"Muhammad Ali"},{q:"Impossible is just a big word thrown around by small men.",a:"Muhammad Ali"},{q:"Don't quit. Suffer now and live the rest of your life as a champion.",a:"Muhammad Ali"},{q:"I hated every minute of training, but I said: don't quit. Suffer now and live the rest of your life as a champion.",a:"Muhammad Ali"},{q:"A champion is someone who gets up when they can't.",a:"Muhammad Ali"},{q:"It ain't about how hard you hit. It's about how hard you can get hit and keep moving forward.",a:"Rocky Balboa"},{q:"Going in one more round when you don't think you can — that's what makes all the difference.",a:"Rocky Balboa"},{q:"Discipline is the bridge between goals and accomplishment.",a:"Jim Rohn"},{q:"Take care of your body. It's the only place you have to live.",a:"Jim Rohn"},{q:"Success is nothing more than a few simple disciplines, practiced every day.",a:"Jim Rohn"},{q:"We must all suffer from one of two pains: the pain of discipline or the pain of regret.",a:"Jim Rohn"},{q:"Motivation is what gets you started. Habit is what keeps you going.",a:"Jim Rohn"},{q:"Push yourself because no one else is going to do it for you.",a:"Anonymous"},{q:"Great things never come from comfort zones.",a:"Anonymous"},{q:"The harder you work for something, the greater you'll feel when you achieve it.",a:"Anonymous"},{q:"Don't stop until you're proud.",a:"Anonymous"},{q:"Wake up with determination. Go to bed with satisfaction.",a:"Anonymous"},{q:"Do something today that your future self will thank you for.",a:"Anonymous"},{q:"Be stronger than your excuses.",a:"Anonymous"},{q:"Sore today, strong tomorrow.",a:"Anonymous"},{q:"Results happen over time, not overnight. Work hard, stay consistent, be patient.",a:"Anonymous"},{q:"The pain of discipline is far less than the pain of regret.",a:"Anonymous"},{q:"You didn't come this far to only come this far.",a:"Anonymous"},{q:"The gym is not a place you go. It's a place you become.",a:"Anonymous"}
@@ -1077,7 +1353,7 @@ function initQuote(){
   document.getElementById('quote-author').textContent=`— ${q.a}`;
 }
 
-load();render();renderBWCur();initQuote();
+load();render();renderBWCur();initQuote();renderStreak();
 </script>
 </body>
 </html>
